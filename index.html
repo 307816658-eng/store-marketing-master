@@ -1418,7 +1418,7 @@
 
     @media (max-width: 440px) {
       .download-info {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .info-cell.info-wide {
@@ -1986,15 +1986,19 @@
           status === 503 ||
           /1015|429|rate[_ ]?limit|too many requests|busy|拥挤|限流|排队/i.test(combined)
         ) {
-          const baseText = isSafeChinesePrompt(backendError)
+          const hasBackendChinesePrompt = isSafeChinesePrompt(backendError);
+          const baseText = hasBackendChinesePrompt
             ? backendError.trim()
             : '当前访问有点拥挤，稍等 30 秒再试';
+          const desc = hasBackendChinesePrompt
+            ? baseText
+            : `${baseText}。目前并发请求较多，平台正在自动限流保护，请稍等片刻再点「重试」。`;
           return {
             kind: 'rate_limit',
             isBusy: true,
             badge: '限流排队提醒',
             title: '当前访问有点拥挤，通道限流中',
-            desc: `${baseText}。目前并发请求较多，平台正在自动限流保护，请稍等片刻再点「重试」。`,
+            desc,
             meta: '您填写的门店信息已保留；不想等待可直接点击右侧「使用本地备用模板」。'
           };
         }
@@ -2317,15 +2321,21 @@
           } catch {
             ok = false;
           }
-          if (!ok) {
+          const isMobileOrTouch =
+            typeof window !== 'undefined' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(max-width: 640px), (pointer: coarse)').matches;
+          if (!ok && !isMobileOrTouch) {
             const ta = document.createElement('textarea');
             ta.value = currentOutputText;
             ta.setAttribute('readonly', '');
+            ta.setAttribute('aria-hidden', 'true');
             ta.style.position = 'fixed';
             ta.style.top = '-9999px';
             ta.style.opacity = '0';
+            ta.style.fontSize = '1px';
             document.body.appendChild(ta);
-            ta.focus();
+            ta.focus({ preventScroll: true });
             ta.select();
             ta.setSelectionRange(0, ta.value.length);
             try {
